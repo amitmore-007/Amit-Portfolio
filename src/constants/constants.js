@@ -14,7 +14,7 @@ export const navLinks = [
       skills: [
         { name: "React JS", icon: "https://img.icons8.com/external-tal-revivo-color-tal-revivo/48/000000/external-react-a-javascript-library-for-building-user-interfaces-logo-color-tal-revivo.png" },
         { name: "Redux", icon: "https://img.icons8.com/color/48/000000/redux.png" },
-        { name: "Next JS", icon: "https://img.icons8.com/color/48/000000/nextjs.png" },
+        
         { name: "HTML", icon: "https://img.icons8.com/color/48/000000/html-5--v1.png" },
         { name: "CSS", icon: "https://img.icons8.com/color/48/000000/css3.png" },
         { name: "JavaScript", icon: "https://img.icons8.com/color/48/000000/javascript--v1.png" },
@@ -36,10 +36,9 @@ export const navLinks = [
     {
       title: "Programming Languages",
       skills: [
-        { name: "C", icon: "https://img.icons8.com/color/48/000000/c-programming.png" },
-        { name: "C++", icon: "https://img.icons8.com/color/48/000000/c-plus-plus-logo.png" },
+      
         { name: "Java", icon: "https://img.icons8.com/color/48/000000/java-coffee-cup-logo--v1.png" },
-        { name: "Python", icon: "https://img.icons8.com/color/48/000000/python--v1.png" },
+        { name: "Javascript", icon: "https://img.icons8.com/?size=100&id=Nkym0Ujb8VGI&format=png&color=000000" },
       ],
     },
     {
@@ -47,6 +46,7 @@ export const navLinks = [
       skills: [
         { name: "Git", icon: "https://img.icons8.com/color/48/000000/git.png" },
         { name: "GitHub", icon: "https://img.icons8.com/glyph-neue/48/ffffff/github.png" },
+        { name: "Power BI", icon: "https://img.icons8.com/?size=100&id=3sGOUDo9nJ4k&format=png&color=000000" },
       ],
     },
   ];
@@ -54,46 +54,39 @@ export const navLinks = [
   export const experiences = [
     {
       id: 1,
-      role: "Software Engineer",
-      company: "Company XYZ",
-      date: "Jan 2023 - Present",
-      description: [
-        "Developed and maintained web applications using React.js and Node.js.",
-        "Implemented RESTful APIs for data retrieval and manipulation.",
-        "Collaborated with cross-functional teams to deliver high-quality software solutions."
-      ]
-    },
-    {
-      id: 2,
-      role: "Web Developer Intern",
-      company: "Tech Solutions Inc.",
-      date: "May 2022 - Dec 2022",
+      role: "Frontend Development Intern",
+      company: "Codsoft Solutions",
+      date: "Dec 2023 - Jan 2024",
       description: [
         "Built responsive websites using HTML, CSS, and JavaScript.",
         "Assisted in developing frontend components using React.js.",
         "Participated in code reviews and testing procedures."
+       
       ]
+     
     },
     {
-      id: 3,
-      role: "Frontend Developer",
-      company: "Web Innovations",
-      date: "Jan 2022 - Apr 2022",
+      id: 2,
+      role: "Full Stack Web Developer Intern",
+      company: "Zealits Solutions Inc.",
+      date: "Nov 2024 - Present",
       description: [
-        "Created user interfaces according to design specifications.",
-        "Optimized application performance through code refactoring.",
-        "Implemented modern CSS techniques for responsive layouts."
+        "Developed and maintained web applications using React.js and Node.js.",
+        "Implemented RESTful APIs for data retrieval and manipulation.",
+        "Collaborated with cross-functional teams to deliver high-quality software solutions."
+       
       ]
-    }
+    },
+    
   ];
   
   export const projects = [
     {
       id: 1,
-      title: "E-Commerce Website",
+      title: "AI- Powered Fitness Website - FitSync",
       date: "Mar 2023",
       description:
-        "A fully functional e-commerce platform with product listings, shopping cart, and payment integration.",
+        "A fully functional fitness platform with product listings, shopping cart, and payment integration.",
       image: "/assets/images/projects/ecommerce.jpg",
       tags: ["React", "Node.js", "MongoDB", "Express"],
       github: "https://github.com/username/project1",

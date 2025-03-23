@@ -1,60 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { Link } from 'react-scroll';
-import { motion, useAnimation, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FiMenu, FiX } from 'react-icons/fi';
 import { navLinks } from '../constants/constants';
-import { useInView } from 'react-intersection-observer';
+import logoImage from '../assets/images/logo.png';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrollPosition, setScrollPosition] = useState(0);
   const [activeLink, setActiveLink] = useState('');
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [hoveredItem, setHoveredItem] = useState(null);
-  const controls = useAnimation();
   const navRef = useRef(null);
   
-  // For particle effect
-  const particlesRef = useRef([]);
-  const [particles, setParticles] = useState([]);
-  
-  // Generate initial particles
-  useEffect(() => {
-    const generateParticles = () => {
-      const newParticles = [];
-      for (let i = 0; i < 15; i++) {
-        newParticles.push({
-          id: i,
-          x: Math.random() * 100,
-          y: Math.random() * 80,
-          size: Math.random() * 3 + 1,
-          speed: Math.random() * 0.5 + 0.1,
-          opacity: Math.random() * 0.5 + 0.1
-        });
-      }
-      setParticles(newParticles);
-    };
-    
-    generateParticles();
-  }, []);
-  
-  // Animate particles
-  useEffect(() => {
-    const animateParticles = () => {
-      setParticles(prevParticles => 
-        prevParticles.map(particle => ({
-          ...particle,
-          y: particle.y + particle.speed > 80 ? 0 : particle.y + particle.speed,
-          x: particle.x + Math.sin(particle.y * 0.05) * 0.2
-        }))
-      );
-    };
-    
-    const intervalId = setInterval(animateParticles, 50);
-    return () => clearInterval(intervalId);
-  }, []);
-
   useEffect(() => {
     const handleScroll = () => {
       setScrollPosition(window.scrollY);
@@ -98,17 +56,6 @@ const Navbar = () => {
   const closeMenu = () => {
     setIsOpen(false);
   };
-  
-  // Function to handle mouse hover on nav items
-  const handleMouseEnter = (id) => {
-    setHoveredItem(id);
-    controls.start({ scale: 1.1, transition: { duration: 0.3 } });
-  };
-  
-  const handleMouseLeave = () => {
-    setHoveredItem(null);
-    controls.start({ scale: 1, transition: { duration: 0.3 } });
-  };
 
   return (
     <NavbarContainer 
@@ -119,28 +66,30 @@ const Navbar = () => {
       transition={{ duration: 0.8, ease: "easeOut" }}
       scrolled={scrollPosition > 50}
     >
-      {/* Animated background */}
+      {/* Magnetic fluid animation background */}
       <NavbarBackground>
-        <ParticlesContainer>
-          {particles.map((particle) => (
-            <Particle 
-              key={particle.id}
-              style={{
-                left: `${particle.x}%`,
-                top: `${particle.y}%`,
-                width: `${particle.size}px`,
-                height: `${particle.size}px`,
-                opacity: particle.opacity
-              }}
-            />
-          ))}
-        </ParticlesContainer>
+        <FluidCanvas 
+          animate={{ 
+            opacity: scrollPosition > 100 ? 0.7 : 1
+          }}
+          style={{
+            transform: `perspective(1000px) rotateX(${mousePosition.y / 100}deg) rotateY(${-mousePosition.x / 100}deg)`
+          }}
+        />
         
-        <GlowingOrb 
+        <LiquidGlow 
           style={{ 
             left: `${mousePosition.x}px`, 
             top: `${mousePosition.y}px`,
-            opacity: scrollPosition > 50 ? 0.3 : 0.7
+          }}
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.6, 0.3]
+          }}
+          transition={{
+            duration: 3,
+            ease: "easeInOut",
+            repeat: Infinity,
           }}
         />
       </NavbarBackground>
@@ -156,10 +105,19 @@ const Navbar = () => {
               type: "spring",
               stiffness: 100
             }}
+            whileHover={{
+              rotate: [0, 5, -5, 0],
+              transition: { duration: 0.5 }
+            }}
           >
-            <LogoShape />
-            <LogoLetter>A</LogoLetter>
-            <HoverEffect />
+            <LogoImage 
+              src={logoImage}
+              alt="Amit More"
+              as={motion.img}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+            />
           </Logo>
         </LogoContainer>
         
@@ -173,14 +131,19 @@ const Navbar = () => {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                onMouseEnter={() => handleMouseEnter(link.id)}
-                onMouseLeave={handleMouseLeave}
                 isActive={activeLink === link.id}
               >
                 <NavItem
                   as={motion.div}
-                  animate={activeLink === link.id ? { scale: 1.1 } : { scale: 1 }}
-                  whileHover={{ scale: 1.1 }}
+                  animate={activeLink === link.id ? 
+                    { scale: 1.1, y: -2 } : 
+                    { scale: 1, y: 0 }
+                  }
+                  whileHover={{ 
+                    scale: 1.1, 
+                    y: -2,
+                    transition: { duration: 0.2 } 
+                  }}
                   whileTap={{ scale: 0.95 }}
                 >
                   <NavLink
@@ -189,18 +152,21 @@ const Navbar = () => {
                     smooth={true}
                     offset={-70}
                     duration={500}
-                    onClick={() => setActiveLink(link.id)}
+                    onClick={() => {
+                      setActiveLink(link.id);
+                      closeMenu();
+                    }}
                     isActive={activeLink === link.id}
                   >
                     {link.title}
+                    {activeLink === link.id && (
+                      <ActiveIndicator 
+                        as={motion.div}
+                        layoutId="activeIndicator"
+                        initial={false}
+                      />
+                    )}
                   </NavLink>
-                  {(activeLink === link.id || hoveredItem === link.id) && (
-                    <NavItemGlow 
-                      as={motion.div}
-                      layoutId="navGlow"
-                      initial={false}
-                    />
-                  )}
                 </NavItem>
               </NavItemWrapper>
             ))}
@@ -226,8 +192,35 @@ const Navbar = () => {
           </ContactButtonWrapper>
         </MenuContainer>
         
-        <MobileIcon onClick={toggleMenu}>
-          {isOpen ? <FiX /> : <FiMenu />}
+        <MobileIcon 
+          as={motion.div}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={toggleMenu}
+        >
+          <AnimatePresence mode="wait">
+            {isOpen ? (
+              <motion.div
+                key="close"
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <FiX />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="menu"
+                initial={{ rotate: 90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: -90, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <FiMenu />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </MobileIcon>
       </NavbarContent>
       
@@ -311,30 +304,42 @@ const NavbarBackground = styled.div`
   border-bottom: 1px solid rgba(130, 130, 255, 0.2);
 `;
 
-const ParticlesContainer = styled.div`
+const FluidCanvas = styled(motion.div)`
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  background: 
+    linear-gradient(
+      125deg, 
+      rgba(70, 30, 180, 0.2), 
+      rgba(60, 100, 200, 0.1),
+      rgba(120, 40, 220, 0.2)
+    ),
+    radial-gradient(
+      circle at 30% 50%,
+      rgba(100, 50, 220, 0.3) 0%,
+      rgba(100, 50, 220, 0) 35%
+    ),
+    radial-gradient(
+      circle at 70% 50%,
+      rgba(60, 120, 255, 0.3) 0%,
+      rgba(60, 120, 255, 0) 40%
+    );
+  filter: blur(12px) contrast(120%);
+  mix-blend-mode: screen;
+  transition: transform 0.1s ease;
 `;
 
-const Particle = styled.div`
+const LiquidGlow = styled(motion.div)`
   position: absolute;
-  background: linear-gradient(135deg, #8A2BE2, #4169E1);
-  border-radius: 50%;
-  pointer-events: none;
-`;
-
-const GlowingOrb = styled.div`
-  position: absolute;
-  width: 150px;
-  height: 150px;
+  width: 250px;
+  height: 250px;
   border-radius: 50%;
   background: radial-gradient(
     circle at center,
-    rgba(125, 111, 255, 0.6) 0%,
+    rgba(125, 111, 255, 0.4) 0%,
     rgba(125, 111, 255, 0.2) 40%,
     rgba(125, 111, 255, 0) 70%
   );
@@ -342,6 +347,7 @@ const GlowingOrb = styled.div`
   pointer-events: none;
   transition: all 0.1s ease;
   z-index: -1;
+  filter: blur(20px);
 `;
 
 const NavbarContent = styled.div`
@@ -359,57 +365,25 @@ const LogoContainer = styled.div`
   position: relative;
   cursor: pointer;
   perspective: 1000px;
-`;
-
-const LogoShape = styled.div`
-  width: 45px;
-  height: 45px;
-  background: linear-gradient(135deg, #8A2BE2, #4169E1);
-  border-radius: 12px;
-  transform: rotate(45deg);
-  box-shadow: 
-    0 0 15px rgba(125, 111, 255, 0.4),
-    0 0 30px rgba(125, 111, 255, 0.2);
-`;
-
-const LogoLetter = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 2rem;
-  font-weight: 800;
-  color: white;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-`;
-
-const HoverEffect = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(
-    circle at center,
-    rgba(255, 255, 255, 0.3) 0%,
-    rgba(255, 255, 255, 0) 70%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  
-  ${LogoContainer}:hover & {
-    opacity: 1;
-  }
+  height: 60px;
+  display: flex;
+  align-items: center;
 `;
 
 const Logo = styled.div`
   position: relative;
   transition: transform 0.5s ease;
   transform-style: preserve-3d;
-  
-  &:hover {
-    transform: rotateY(20deg) rotateX(10deg);
-  }
+  height: 100%;
+  display: flex;
+  align-items: center;
+`;
+
+const LogoImage = styled.img`
+  height: 50px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
 `;
 
 const MenuContainer = styled.div`
@@ -453,15 +427,15 @@ const NavItem = styled.div`
   }
 `;
 
-const NavItemGlow = styled.div`
+const ActiveIndicator = styled.div`
   position: absolute;
-  top: 0;
+  bottom: -5px;
   left: 0;
   width: 100%;
-  height: 100%;
-  border-radius: 20px;
-  box-shadow: 0 0 15px rgba(125, 111, 255, 0.6);
-  z-index: -1;
+  height: 3px;
+  background: linear-gradient(90deg, #8A2BE2, #4169E1);
+  border-radius: 3px;
+  box-shadow: 0 0 10px rgba(138, 43, 226, 0.5);
 `;
 
 const NavLink = styled(Link)`
@@ -474,6 +448,7 @@ const NavLink = styled(Link)`
   text-transform: uppercase;
   white-space: nowrap;
   transition: all 0.3s ease;
+  position: relative;
   
   &:hover {
     color: white;

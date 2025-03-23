@@ -1,89 +1,146 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-scroll';
 import { FaCode, FaServer, FaBrain, FaArrowRight } from 'react-icons/fa';
 
-const About = () => {
-  const canvasRef = useRef(null);
-  
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    const particles = [];
-    let animationFrameId;
-    
-    const resizeCanvas = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-      initParticles();
-    };
-    
-    const initParticles = () => {
-      particles.length = 0;
-      const particleCount = Math.floor(canvas.width * canvas.height / 10000);
-      
-      for (let i = 0; i < particleCount; i++) {
-        particles.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          vx: Math.random() * 0.5 - 0.25,
-          vy: Math.random() * 0.5 - 0.25,
-          radius: Math.random() * 2 + 1,
-          color: `rgba(88, 133, 254, ${Math.random() * 0.5 + 0.2})`
-        });
-      }
-    };
-    
-    const drawParticles = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      particles.forEach((particle, i) => {
-        // Update position
-        particle.x += particle.vx;
-        particle.y += particle.vy;
-        
-        // Boundary check
-        if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
-        if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
-        
-        // Draw particle
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-        ctx.fillStyle = particle.color;
-        ctx.fill();
-        
-        // Connect particles
-        particles.forEach((p2, j) => {
-          if (i === j) return;
-          
-          const dx = particle.x - p2.x;
-          const dy = particle.y - p2.y;
+
+const ParticleNetwork = ({ count = 50 }) => {
+  // Generate random particles
+  const particles = Array.from({ length: count }).map((_, i) => ({
+    id: i,
+    x: Math.random() * 100, // % position
+    y: Math.random() * 100, // % position
+    size: Math.random() * 3 + 1,
+    velocity: {
+      x: (Math.random() - 0.5) * 0.2,
+      y: (Math.random() - 0.5) * 0.2
+    }
+  }));
+
+  return (
+    <div className="particle-container" style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      overflow: 'hidden',
+      zIndex: -1
+    }}>
+      {particles.map((particle) => (
+        <motion.div
+          key={particle.id}
+          style={{
+            position: 'absolute',
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+            width: particle.size,
+            height: particle.size,
+            borderRadius: '50%',
+            background: 'rgba(123, 104, 238, 0.3)',
+            boxShadow: '0 0 10px rgba(123, 104, 238, 0.5)'
+          }}
+          animate={{
+            x: [0, particle.velocity.x * 100, 0],
+            y: [0, particle.velocity.y * 100, 0],
+            opacity: [0.1, 0.7, 0.1]
+          }}
+          transition={{
+            duration: Math.random() * 10 + 15,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Add the ConnectionLines component for network effect
+const ConnectionLines = ({ particles, threshold = 15 }) => {
+  return (
+    <svg 
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: -1
+      }}
+    >
+      {particles.flatMap((p1, i) => 
+        particles.slice(i + 1).map((p2, j) => {
+          const dx = Math.abs(p1.x - p2.x);
+          const dy = Math.abs(p1.y - p2.y);
           const distance = Math.sqrt(dx * dx + dy * dy);
           
-          if (distance < 100) {
-            ctx.beginPath();
-            ctx.moveTo(particle.x, particle.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(88, 133, 254, ${0.1 * (1 - distance / 100)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
+          // Only draw lines between nearby particles
+          if (distance < threshold) {
+            const opacity = 1 - (distance / threshold);
+            return (
+              <motion.line
+                key={`${i}-${i+j+1}`}
+                x1={`${p1.x}%`}
+                y1={`${p1.y}%`}
+                x2={`${p2.x}%`}
+                y2={`${p2.y}%`}
+                stroke={`rgba(123, 104, 238, ${opacity * 0.2})`}
+                strokeWidth="0.5"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: opacity * 0.5 }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  repeatType: "reverse"
+                }}
+              />
+            );
           }
-        });
-      });
+          return null;
+        }).filter(Boolean)
+      )}
+    </svg>
+  );
+};
+
+
+const About = () => {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
+
+  const networkParticles = Array.from({ length: 30 }).map((_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100
+  }));
+
+  
+  const parallaxY1 = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const parallaxY2 = useTransform(scrollYProgress, [0, 1], [0, -50]);
+  const opacityRange = useTransform(scrollYProgress, [0, 0.2, 0.9, 1], [0, 1, 1, 0]);
+  
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      const container = containerRef.current;
+      if (!container) return;
       
-      animationFrameId = requestAnimationFrame(drawParticles);
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      setMousePosition({ x, y });
     };
     
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-    drawParticles();
+    window.addEventListener('mousemove', handleMouseMove);
     
     return () => {
-      window.removeEventListener('resize', resizeCanvas);
-      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('mousemove', handleMouseMove);
     };
   }, []);
 
@@ -105,114 +162,210 @@ const About = () => {
     }
   ];
 
+  const achievements = [
+    { number: "4+", label: "Years Experience" },
+    { number: "20+", label: "Projects" },
+    { number: "15+", label: "Happy Clients" },
+    { number: "5+", label: "AI Integrations" }
+  ];
+
+  // Calculate mouse-based transforms
+  const calculateCardTransform = (elementRect) => {
+    if (!containerRef.current) return { rotateX: 0, rotateY: 0 };
+    
+    const container = containerRef.current.getBoundingClientRect();
+    const centerX = container.width / 2;
+    const centerY = container.height / 2;
+    
+    const rotateY = ((mousePosition.x - centerX) / centerX) * 5;
+    const rotateX = ((centerY - mousePosition.y) / centerY) * 5;
+    
+    return { rotateX, rotateY };
+  };
+
   return (
-    <AboutSection id="about">
-      <BackgroundCanvas ref={canvasRef} />
+    <AboutSection id="about" ref={containerRef} >
+     <ParticleNetwork count={50} />
+     <ConnectionLines particles={networkParticles} threshold={25} />
+      <NeuralBackground mouseX={mousePosition.x} mouseY={mousePosition.y} />
+     
+      {/* <StarsCanvas /> */}
       
-      <ContentContainer className="container">
-        <motion.h2 
-          className="section-title"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-        >
-          About <GradientText>Me</GradientText>
-        </motion.h2>
-        
-        <motion.p 
-          className="section-subtitle"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          viewport={{ once: true }}
-        >
-          Full Stack Developer | AI & Web Enthusiast
-        </motion.p>
-        
-        <AboutContent>
+      <ContentContainer>
+        <motion.div style={{ opacity: opacityRange }}>
           <motion.div 
-            className="about-me-container"
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            className="heading-container"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <AboutCard className="story-card">
-              <CardContent>
-                <AboutTitle>
-                  <HeadingAccent />
-                  My Story
-                </AboutTitle>
-                <AboutTextContainer>
-                  <AboutText>
-                    I'm a <GradientText>MERN Stack Developer</GradientText> passionate about building <GradientText>scalable web applications and AI-powered solutions</GradientText>. With expertise in <GradientText>React, Node.js, Express, MongoDB</GradientText>, and <GradientText>AI-driven development (Vision Transformers, TensorFlow.js)</GradientText>, I have developed multiple real-world applications.
-                  </AboutText>
-                  <AboutText>
-                    My portfolio includes a <GradientText>Gift Card Management System</GradientText>, <GradientText>Rental Apply Website</GradientText>, <GradientText>Video Meet App</GradientText>, and an <GradientText>Image Captioning System</GradientText>. I thrive in <GradientText>collaborative environments</GradientText> and enjoy solving complex challenges with innovative tech solutions.
-                  </AboutText>
-                  <AboutText>
-                    I'm open to exciting <GradientText>full-time roles, freelance projects, and collaborations</GradientText>! Let's build something amazing together.
-                  </AboutText>
-                  <ContactButtonWrapper>
-                    <ContactButton to="contact" smooth={true} duration={500} offset={-70}>
-                      Get In Touch
-                      <FaArrowRight className="arrow-icon" />
-                    </ContactButton>
-                  </ContactButtonWrapper>
-                </AboutTextContainer>
-              </CardContent>
-            </AboutCard>
+            <HeadingWrapper>
+             
+              <SolidText>About <GradientSpan>Me</GradientSpan></SolidText>
+            </HeadingWrapper>
+            
+            <SubtitleContainer>
+              <motion.div
+                initial={{ width: 0 }}
+                whileInView={{ width: '100px' }}
+                transition={{ duration: 1, delay: 0.5 }}
+                viewport={{ once: true }}
+                className="subtitle-line"
+              />
+              <motion.p 
+                className="subtitle-text"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                viewport={{ once: true }}
+              >
+                Full Stack Developer | AI & Web Enthusiast
+              </motion.p>
+              <motion.div
+                initial={{ width: 0 }}
+                whileInView={{ width: '100px' }}
+                transition={{ duration: 1, delay: 0.5 }}
+                viewport={{ once: true }}
+                className="subtitle-line"
+              />
+            </SubtitleContainer>
           </motion.div>
           
-          <motion.div 
-            className="skills-container"
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            viewport={{ once: true }}
-          >
-            <AboutCard className="skills-card">
-              <CardContent>
-                <AboutTitle>
-                  <HeadingAccent />
-                  Technical Skills
-                </AboutTitle>
-                
-                {skillCategories.map((category, catIndex) => (
-                  <SkillCategoryContainer key={category.name}>
-                    <SkillCategoryTitle
-                      initial={{ opacity: 0, x: -20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.5, delay: 0.1 * catIndex }}
-                      viewport={{ once: true }}
-                    >
-                      <CategoryIcon>{category.icon}</CategoryIcon>
-                      {category.name}
-                    </SkillCategoryTitle>
-                    <SkillsContainer>
-                      {category.skills.map((skill, index) => (
-                        <SkillTag 
-                          key={skill}
-                          initial={{ opacity: 0, y: 20 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: 0.05 * (index + 1) }}
-                          viewport={{ once: true }}
-                          whileHover={{ 
-                            scale: 1.05,
-                            boxShadow: "0 10px 20px rgba(62, 116, 245, 0.25)"
-                          }}
-                        >
-                          {skill}
-                        </SkillTag>
-                      ))}
-                    </SkillsContainer>
-                  </SkillCategoryContainer>
-                ))}
-              </CardContent>
-            </AboutCard>
-          </motion.div>
-        </AboutContent>
+         
+          
+          <ContentGrid>
+            <motion.div 
+              className="profile-section"
+              style={{ y: parallaxY1 }}
+            >
+              <ProfileCard 
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8 }}
+                viewport={{ once: true }}
+                whileHover={{ 
+                  scale: 1.02,
+                  transition: { duration: 0.3 }
+                }}
+                transformStyle="preserve-3d"
+              >
+                <HoverGradientBorder />
+                <ProfileContent>
+                  <ProfileHeader>
+                    <ProfileTitleWrapper>
+                      <AnimatedCube />
+                      <ProfileTitle>Who I Am</ProfileTitle>
+                    </ProfileTitleWrapper>
+                    <GlowUnderline />
+                  </ProfileHeader>
+                  
+                  <ProfileQuote>
+                    "Building digital experiences at the intersection of AI and web development"
+                  </ProfileQuote>
+                  
+                  <ProfileText>
+                    I'm a <HighlightText>MERN Stack Developer</HighlightText> passionate about creating <HighlightText>seamless user experiences</HighlightText> powered by cutting-edge technologies.
+                  </ProfileText>
+                  
+                  <ProfileText>
+                    My expertise spans <HighlightText>React, Node.js, MongoDB</HighlightText> and <HighlightText>AI integration (Vision Transformers, TensorFlow.js)</HighlightText>, allowing me to build applications that are not only visually stunning but also intelligent.
+                  </ProfileText>
+                  
+                  <KeyProjectsContainer>
+                    <KeyProjectsHeader>Featured Projects</KeyProjectsHeader>
+                    <KeyProjectsList>
+                      <KeyProject>
+                        <ProjectIcon className="gift-card" />
+                        <ProjectDetails>
+                          <ProjectName>Gift Card System</ProjectName>
+                          <ProjectTech>React, Node.js, MongoDB</ProjectTech>
+                        </ProjectDetails>
+                      </KeyProject>
+                      <KeyProject>
+                        <ProjectIcon className="rental" />
+                        <ProjectDetails>
+                          <ProjectName>Rental Apply Platform</ProjectName>
+                          <ProjectTech>MERN Stack, Redux</ProjectTech>
+                        </ProjectDetails>
+                      </KeyProject>
+                      <KeyProject>
+                        <ProjectIcon className="ai" />
+                        <ProjectDetails>
+                          <ProjectName>Image Captioning System</ProjectName>
+                          <ProjectTech>TensorFlow.js, React</ProjectTech>
+                        </ProjectDetails>
+                      </KeyProject>
+                    </KeyProjectsList>
+                  </KeyProjectsContainer>
+                  
+                  <ConnectButtonContainer>
+                    <ConnectButton to="contact" smooth={true} duration={500} offset={-70}>
+                      <ConnectButtonText>Let's Connect</ConnectButtonText>
+                      <ButtonArrow><FaArrowRight /></ButtonArrow>
+                      <ButtonHighlight />
+                    </ConnectButton>
+                  </ConnectButtonContainer>
+                </ProfileContent>
+              </ProfileCard>
+            </motion.div>
+            
+            <motion.div 
+              className="skills-section"
+              style={{ y: parallaxY2 }}
+            >
+              <SkillsCard
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+                viewport={{ once: true }}
+                whileHover={{ 
+                  scale: 1.02,
+                  transition: { duration: 0.3 }
+                }}
+                transformStyle="preserve-3d"
+              >
+                <HoverGradientBorder />
+                <SkillsContent>
+                  <SkillsHeader>
+                    <SkillsTitleWrapper>
+                      <CubeGrid />
+                      <SkillsTitle>Tech Stack</SkillsTitle>
+                    </SkillsTitleWrapper>
+                    <GlowUnderline />
+                  </SkillsHeader>
+                  
+                  {skillCategories.map((category, catIndex) => (
+                    <SkillCategory key={category.name} delay={catIndex * 0.2}>
+                      <CategoryHeader>
+                        <IconBubble>{category.icon}</IconBubble>
+                        <CategoryName>{category.name}</CategoryName>
+                      </CategoryHeader>
+                      
+                      <SkillsCloud>
+                        {category.skills.map((skill, index) => (
+                          <SkillPill 
+                            key={skill}
+                            initialDelay={0.1 * index + catIndex * 0.2}
+                            whileHover={{ 
+                              scale: 1.1,
+                              y: -5
+                            }}
+                          >
+                            {skill}
+                            <SkillPillGlow />
+                          </SkillPill>
+                        ))}
+                      </SkillsCloud>
+                    </SkillCategory>
+                  ))}
+                  
+                  
+                </SkillsContent>
+              </SkillsCard>
+            </motion.div>
+          </ContentGrid>
+        </motion.div>
       </ContentContainer>
     </AboutSection>
   );
@@ -222,278 +375,693 @@ export default About;
 
 // Animations
 const float = keyframes`
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(2deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+`;
+
+const spin = keyframes`
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(360deg); }
 `;
 
 const pulse = keyframes`
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 `;
 
-const gradientAnimation = keyframes`
+const gradientShift = keyframes`
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 `;
 
-// Styled components
-const AboutSection = styled.section`
-  position: relative;
-  padding: 8rem 0 6rem;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background-color: #0a0e17;
-  color: #f3f4f6;
+const glow = keyframes`
+  0% { text-shadow: 0 0 10px rgba(123, 104, 238, 0.6), 0 0 20px rgba(123, 104, 238, 0); }
+  50% { text-shadow: 0 0 20px rgba(123, 104, 238, 0.8), 0 0 40px rgba(123, 104, 238, 0.4); }
+  100% { text-shadow: 0 0 10px rgba(123, 104, 238, 0.6), 0 0 20px rgba(123, 104, 238, 0); }
 `;
 
-const BackgroundCanvas = styled.canvas`
+const borderGlow = keyframes`
+  0% { box-shadow: 0 0 0 2px rgba(62, 116, 245, 0); }
+  50% { box-shadow: 0 0 0 2px rgba(62, 116, 245, 0.8); }
+  100% { box-shadow: 0 0 0 2px rgba(62, 116, 245, 0); }
+`;
+
+const rotate3d = keyframes`
+  0% { transform: rotateX(0deg) rotateY(0deg); }
+  50% { transform: rotateX(180deg) rotateY(180deg); }
+  100% { transform: rotateX(360deg) rotateY(360deg); }
+`;
+
+const shine = keyframes`
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+`;
+
+const twinkle = keyframes`
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+`;
+
+// Styled Components
+const AboutSection = styled.section`
+  position: relative;
+  min-height: 100vh;
+  padding: 8rem 0;
+  overflow: hidden;
+  background-color: #080b14;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  
+`;
+
+const NeuralBackground = styled.div`
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+  right: 0;
+  bottom: 0;
+  z-index: -2;
+  background: 
+    radial-gradient(
+      circle at ${props => props.mouseX}px ${props => props.mouseY}px, 
+      rgba(123, 104, 238, 0.15) 0%, 
+      rgba(62, 116, 245, 0.05) 20%, 
+      transparent 60%
+    ),
+    linear-gradient(135deg, #080b14 0%, #0f1a30 100%);
+  transition: background 0.3s ease;
+
+  &:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233e74f5' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    opacity: 0.3;
+  }
 `;
+
+// const StarsCanvas = styled.div`
+//   position: absolute;
+//   top: 0;
+//   left: 0;
+//   right: 0;
+//   bottom: 0;
+//   z-index: -1;
+  
+//   &:before, &:after {
+//     content: '';
+//     position: absolute;
+//     width: 3px;
+//     height: 3px;
+//     border-radius: 50%;
+//     background: white;
+//   }
+  
+//   &:before {
+//     box-shadow: 
+//       20px 30px white, 50px 80px white, 80px 120px rgba(255,255,255,0.8),
+//       110px 50px rgba(255,255,255,0.6), 140px 90px white, 170px 20px rgba(255,255,255,0.7),
+//       200px 60px white, 230px 30px rgba(255,255,255,0.6), 260px 80px white,
+//       310px 40px rgba(255,255,255,0.8), 340px 90px white, 370px 30px rgba(255,255,255,0.7),
+//       400px 50px white, 450px 80px rgba(255,255,255,0.6), 490px 30px white,
+//       520px 90px rgba(255,255,255,0.8), 560px 40px white, 590px 70px rgba(255,255,255,0.7),
+//       620px 30px white, 650px 80px rgba(255,255,255,0.6), 680px 40px white,
+//       720px 90px rgba(255,255,255,0.7), 750px 50px white, 780px 30px rgba(255,255,255,0.8),
+//       825px 70px white, 850px 40px rgba(255,255,255,0.6), 880px 80px white,
+//       910px 30px rgba(255,255,255,0.7), 940px 60px white, 970px 40px rgba(255,255,255,0.8);
+//     animation: ${twinkle} 10s infinite alternate;
+//   }
+  
+//   &:after {
+//     box-shadow: 
+//       30px 50px white, 65px 100px white, 95px 30px rgba(255,255,255,0.8),
+//       130px 70px rgba(255,255,255,0.6), 160px 40px white, 190px 80px rgba(255,255,255,0.7),
+//       220px 30px white, 255px 60px rgba(255,255,255,0.6), 285px 40px white,
+//       320px 80px rgba(255,255,255,0.8), 355px 30px white, 385px 70px rgba(255,255,255,0.7),
+//       420px 40px white, 455px 60px rgba(255,255,255,0.6), 485px 80px white,
+//       520px 30px rgba(255,255,255,0.8), 555px 70px white, 585px 40px rgba(255,255,255,0.7),
+//       620px 80px white, 655px 30px rgba(255,255,255,0.6), 685px 70px white,
+//       720px 40px rgba(255,255,255,0.7), 755px 80px white, 785px 30px rgba(255,255,255,0.8),
+//       820px 60px white, 860px 70px rgba(255,255,255,0.6), 890px 30px white,
+//       925px 80px rgba(255,255,255,0.7), 960px 40px white, 995px 60px rgba(255,255,255,0.8);
+//     animation: ${twinkle} 14s infinite alternate-reverse;
+//   }
+// `;
 
 const ContentContainer = styled.div`
   position: relative;
-  z-index: 2;
+  z-index: 1;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 2rem;
   
-  .section-title {
-    font-family: 'Cabinet Grotesk', sans-serif;
-    font-size: 4rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    text-align: center;
-    color: #f3f4f6;
-    line-height: 1.1;
+  .heading-container {
+    margin-bottom: 3rem;
   }
   
-  .section-subtitle {
+  .subtitle-line {
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #7b68ee, transparent);
+    border-radius: 3px;
+  }
+  
+  .subtitle-text {
     font-family: 'Mona Sans', sans-serif;
     font-size: 1.5rem;
-    text-align: center;
-    max-width: 800px;
-    margin: 0 auto 5rem;
     color: #a3b3ff;
+    margin: 0 1.5rem;
     font-weight: 300;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
   }
 `;
 
-const AboutContent = styled.div`
+const HeadingWrapper = styled.div`
+  position: relative;
+  height: 90px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+  perspective: 1000px;
+`;
+
+// const OutlineText = styled.h2`
+//   position: absolute;
+//   font-family: 'Cabinet Grotesk', sans-serif;
+//   font-size: 5rem;
+//   font-weight: 800;
+//   -webkit-text-stroke: 1px rgba(62, 116, 245, 0.3);
+//   color: transparent;
+//   transform: translateZ(-10px);
+//   opacity: 0.5;
+//   margin: 0;
+//   user-select: none;
+// `;
+
+// const GlowText = styled.h2`
+//   position: absolute;
+//   font-family: 'Cabinet Grotesk', sans-serif;
+//   font-size: 5rem;
+//   font-weight: 800;
+//   color: transparent;
+//   -webkit-text-stroke: 1px #7b68ee;
+//   filter: blur(4px);
+//   animation: ${glow} 3s ease-in-out infinite;
+//   transform: translateZ(-5px);
+//   margin: 0;
+//   user-select: none;
+// `;
+
+const SolidText = styled.h2`
+  position: relative;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 5rem;
+  font-weight: 800;
+  color: #f3f4f6;
+  margin: 0;
+  transform: translateZ(0);
+  
+  @media (max-width: 768px) {
+    font-size: 3.5rem;
+  }
+`;
+
+const GradientSpan = styled.span`
+  background: linear-gradient(135deg, #3e74f5, #7b68ee, #a3b3ff);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ${gradientShift} 5s ease infinite;
+`;
+
+const SubtitleContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+
+
+const CountUpNumber = styled.div`
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 3rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #3e74f5, #7b68ee);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 0.5rem;
+  position: relative;
+  
+  &:after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, #3e74f5, transparent);
+    border-radius: 2px;
+  }
+`;
+
+const AchievementLabel = styled.div`
+  font-family: 'Mona Sans', sans-serif;
+  color: #a3b3ff;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  margin-top: 0.8rem;
+`;
+
+const ContentGrid = styled.div`
   display: grid;
-  grid-template-columns: 3fr 2fr;
+  grid-template-columns: 6fr 5fr;
   gap: 2rem;
   
   @media (max-width: 992px) {
     grid-template-columns: 1fr;
-    gap: 4rem;
-  }
-  
-  .story-card {
-    aspect-ratio: 1 / 1;
-    display: flex;
-    flex-direction: column;
-    
-    @media (max-width: 992px) {
-      aspect-ratio: auto;
-    }
-  }
-  
-  .skills-card {
-    height: calc(100% - 20px);
-    align-self: center;
   }
 `;
 
-const AboutCard = styled.div`
+const HoverGradientBorder = styled.div`
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  z-index: -1;
+  background: linear-gradient(135deg, #3e74f5, #7b68ee, #3e74f5);
+  background-size: 300% 300%;
+  opacity: 0;
+  transition: all 0.3s ease;
+  animation: ${gradientShift} 5s ease infinite;
+`;
+
+const ProfileCard = styled(motion.div)`
   position: relative;
-  background: rgba(23, 33, 54, 0.5);
-  border-radius: 25px;
-  border: 1px solid rgba(138, 152, 234, 0.2);
+  background: rgba(15, 23, 42, 0.7);
   backdrop-filter: blur(15px);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 20px;
   overflow: hidden;
+  transition: all 0.5s ease;
+  transform-style: preserve-3d;
+  margin-top :30px;
+  border: 1px solid rgba(138, 152, 234, 0.2);
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    inset 0 0 30px rgba(62, 116, 245, 0.05);
   
-  &:before {
+ 
+`;
+
+const ProfileContent = styled.div`
+  padding: 2.5rem;
+  position: relative;
+  z-index: 1;
+`;
+
+const ProfileHeader = styled.div`
+  margin-bottom: 2rem;
+  position: relative;
+`;
+
+const ProfileTitleWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const AnimatedCube = styled.div`
+  width: 24px;
+  height: 24px;
+  border: 2px solid #3e74f5;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: ${rotate3d} 8s linear infinite;
+  
+  &:before, &:after {
     content: '';
     position: absolute;
-    top: -2px;
+    width: 100%;
+    height: 100%;
+  }
+  
+  &:before {
+    border: 2px solid #7b68ee;
+    transform: rotateY(90deg) translateZ(12px);
     left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, #4169e1, #3e74f5, #7b68ee);
-    z-index: -1;
-    border-radius: 24px;
-    opacity: 0.3;
-    transition: opacity 0.3s ease;
   }
   
-  &:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-    
-    &:before {
-      opacity: 0.6;
-    }
-  }
-  
-  &.story-card {
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
-    
-    &:before {
-      opacity: 0.5;
-    }
+  &:after {
+    border: 2px solid #a3b3ff;
+    transform: rotateX(90deg) translateZ(12px);
+    top: -2px;
   }
 `;
 
-const CardContent = styled.div`
-  padding: 2.5rem;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  
-  .story-card & {
-    justify-content: center;
-  }
-`;
-
-const HeadingAccent = styled.span`
-  display: block;
-  width: 50px;
-  height: 5px;
-  background: linear-gradient(90deg, #3e74f5, #7b68ee);
-  margin-bottom: 1rem;
-  border-radius: 3px;
-`;
-
-const AboutTitle = styled.h3`
+const ProfileTitle = styled.h3`
   font-family: 'Cabinet Grotesk', sans-serif;
-  font-size: 2.3rem;
-  margin-bottom: 2rem;
+  font-size: 2.2rem;
+  font-weight: 700;
   color: #f3f4f6;
-  font-weight: 600;
+  margin: 0;
 `;
 
-const AboutTextContainer = styled.div`
-  background: rgba(23, 33, 54, 0.5);
-  border-radius: 16px;
-  padding: 2rem;
-  border-left: 4px solid #3e74f5;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  
-  .story-card & {
-    justify-content: space-between;
-  }
-`;
-
-const AboutText = styled.p`
-  font-family: 'Mona Sans', sans-serif;
-  color: #d1d5db;
-  margin-bottom: 1.5rem;
-  line-height: 1.8;
-  font-size: 1.1rem;
-  letter-spacing: 0.3px;
-`;
-
-const GradientText = styled.span`
+const GlowUnderline = styled.div`
+  height: 3px;
+  width: 60px;
+  margin-top: 1rem;
   background: linear-gradient(90deg, #3e74f5, #7b68ee);
-  background-size: 200% 200%;
-  animation: ${gradientAnimation} 5s ease infinite;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  font-weight: 600;
-`;
-
-const ContactButtonWrapper = styled.div`
-  display: flex;
-  justify-content: flex-start;
-  margin-top: 2.5rem;
-`;
-
-const ContactButton = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #3e74f5, #7b68ee);
-  background-size: 200% 200%;
-  animation: ${gradientAnimation} 5s ease infinite;
-  color: #fff;
-  padding: 1rem 2.5rem;
-  border-radius: 50px;
-  text-decoration: none;
-  font-weight: 500;
-  font-family: 'Mona Sans', sans-serif;
-  font-size: 1rem;
-  letter-spacing: 1px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 16px rgba(62, 116, 245, 0.3);
+  border-radius: 3px;
   position: relative;
   overflow: hidden;
   
-  &:before {
+  &:after {
     content: '';
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: rgba(255, 255, 255, 0.2);
-    transform: skewX(-30deg);
-    transition: all 0.6s ease;
+    background: rgba(255, 255, 255, 0.5);
+    animation: ${shine} 2s infinite;
   }
+`;
+
+const ProfileQuote = styled.blockquote`
+  font-family: 'Mona Sans', sans-serif;
+  font-style: italic;
+  color: #a3b3ff;
+  border-left: 3px solid #3e74f5;
+  padding-left: 1rem;
+  margin: 2rem 0;
+  font-size: 1.2rem;
+  position: relative;
+  
+  &:before {
+    content: '"';
+    position: absolute;
+    top: -15px;
+    left: -15px;
+    font-size: 3rem;
+    color: rgba(62, 116, 245, 0.2);
+    font-family: Georgia, serif;
+  }
+`;
+
+const ProfileText = styled.p`
+  font-family: 'Mona Sans', sans-serif;
+  color: #d1d5db;
+  line-height: 1.8;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 1;
+`;
+
+const HighlightText = styled.span`
+  position: relative;
+  color: #f3f4f6;
+  font-weight: 600;
+  
+  &:after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(90deg, #3e74f5, #7b68ee);
+    opacity: 0.3;
+    z-index: -1;
+    border-radius: 3px;
+  }
+`;
+
+const KeyProjectsContainer = styled.div`
+  background: rgba(10, 17, 30, 0.6);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  border-left: 3px solid #7b68ee;
+`;
+
+const KeyProjectsHeader = styled.h4`
+  font-family: 'Cabinet Grotesk', sans-serif;
+  color: #a3b3ff;
+  font-size: 1.2rem;
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+`;
+
+const KeyProjectsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
+
+const KeyProject = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.3s ease;
+  padding: 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
   
   &:hover {
-    box-shadow: 0 12px 20px rgba(62, 116, 245, 0.4);
-    transform: translateY(-3px);
-    
-    &:before {
-      left: 150%;
+    background: rgba(62, 116, 245, 0.1);
+    transform: translateX(5px);
+  }
+`;
+
+const ProjectIcon = styled.div`
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #3e74f5, #7b68ee);
+  color: white;
+  position: relative;
+  overflow: hidden;
+  
+  &.gift-card:before {
+    content: '🎁';
+    font-size: 1rem;
+  }
+  
+  &.rental:before {
+    content: '🏠';
+    font-size: 1rem;
+  }
+  
+  &.ai:before {
+    content: '🤖';
+    font-size: 1rem;
+  }
+  
+  &:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(62, 116, 245, 0.7), rgba(123, 104, 238, 0.7));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  ${KeyProject}:hover & {
+    &:after {
+      opacity: 1;
     }
+  }
+`;
+
+const ProjectDetails = styled.div`
+  flex: 1;
+`;
+
+const ProjectName = styled.div`
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 600;
+  color: #f3f4f6;
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
+`;
+
+const ProjectTech = styled.div`
+  font-family: 'Mona Sans', sans-serif;
+  font-size: 0.85rem;
+  color: #a3b3ff;
+`;
+
+const ConnectButtonContainer = styled.div`
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+`;
+
+const ConnectButton = styled(Link)`
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #3e74f5, #7b68ee);
+  border: none;
+  padding: 0.8rem 2rem;
+  border-radius: 30px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  transform-style: preserve-3d;
+  
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(62, 116, 245, 0.3);
     
-    .arrow-icon {
-      transform: translateX(5px);
+    svg {
+      transform: translateX(3px);
     }
   }
   
-  .arrow-icon {
-    transition: transform 0.3s ease;
+  &:active {
+    transform: translateY(-1px);
   }
 `;
 
-const CategoryIcon = styled.span`
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  width: 36px;
-  height: 36px;
-  margin-right: 12px;
-  background: linear-gradient(135deg, #3e74f5, #7b68ee);
-  border-radius: 10px;
-  color: #ffffff;
+const ConnectButtonText = styled.span`
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 600;
+  color: white;
   font-size: 1rem;
-  box-shadow: 0 4px 10px rgba(62, 116, 245, 0.3);
+  position: relative;
+  z-index: 2;
 `;
 
-const SkillCategoryContainer = styled.div`
+const ButtonArrow = styled.span`
+  color: white;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+  position: relative;
+  z-index: 2;
+`;
+
+const ButtonHighlight = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(-100%);
+  transition: transform 0.4s ease;
+  z-index: 1;
+  
+  ${ConnectButton}:hover & {
+    transform: translateX(0);
+  }
+`;
+
+const SkillsCard = styled(motion.div)`
+  position: relative;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.5s ease;
+  transform-style: preserve-3d;
+  border: 1px solid rgba(138, 152, 234, 0.2);
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    inset 0 0 30px rgba(62, 116, 245, 0.05);
+  
+  
+`;
+
+const SkillsContent = styled.div`
+  padding: 2.5rem;
+  position: relative;
+  z-index: 1;
+`;
+
+const SkillsHeader = styled.div`
+  margin-bottom: 2rem;
+  position: relative;
+`;
+
+const SkillsTitleWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const CubeGrid = styled.div`
+  width: 24px;
+  height: 24px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 2px;
+  
+  div {
+    background: #3e74f5;
+    border-radius: 2px;
+    animation: ${pulse} 2s infinite;
+    
+    &:nth-child(1) {
+      animation-delay: 0s;
+    }
+    
+    &:nth-child(2) {
+      background: #7b68ee;
+      animation-delay: 0.3s;
+    }
+    
+    &:nth-child(3) {
+      background: #a3b3ff;
+      animation-delay: 0.6s;
+    }
+    
+    &:nth-child(4) {
+      animation-delay: 0.9s;
+    }
+  }
+  
+  &:before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(62, 116, 245, 0.3);
+    filter: blur(8px);
+    opacity: 0.5;
+  }
+`;
+
+const SkillsTitle = styled.h3`
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  margin: 0;
+`;
+
+const SkillCategory = styled(motion.div)`
   margin-bottom: 2rem;
   
   &:last-child {
@@ -501,41 +1069,130 @@ const SkillCategoryContainer = styled.div`
   }
 `;
 
-const SkillCategoryTitle = styled(motion.h4)`
-  font-family: 'Cabinet Grotesk', sans-serif;
-  font-size: 1.2rem;
+const CategoryHeader = styled.div`
   display: flex;
   align-items: center;
+  gap: 1rem;
   margin-bottom: 1rem;
-  color: #a3b3ff;
-  font-weight: 600;
 `;
 
-const SkillsContainer = styled.div`
+const IconBubble = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3e74f5, #7b68ee);
+  color: white;
+  font-size: 1.2rem;
+  box-shadow: 0 5px 15px rgba(62, 116, 245, 0.3);
+  animation: ${float} 3s ease-in-out infinite;
+`;
+
+const CategoryName = styled.h4`
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #f3f4f6;
+  margin: 0;
+`;
+
+const SkillsCloud = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 0.8rem;
-  padding: 1.2rem;
-  background: rgba(23, 33, 54, 0.5);
-  border-radius: 16px;
+  margin-top: 1rem;
 `;
 
-const SkillTag = styled(motion.div)`
-  background: rgba(62, 116, 245, 0.15);
-  color: #a3b3ff;
-  padding: 0.7rem 1.1rem;
-  border-radius: 50px;
+const SkillPillGlow = styled.div`
+  position: absolute;
+  inset: 0;
+  border-radius: 30px;
+  z-index: -1;
+  background: linear-gradient(135deg, #3e74f5, #7b68ee);
+  opacity: 0;
+  transition: all 0.3s ease;
+  filter: blur(8px);
+`;
+
+const SkillPill = styled(motion.div)`
+  position: relative;
+  font-family: 'Mona Sans', sans-serif;
   font-size: 0.9rem;
   font-weight: 500;
-  font-family: 'Mona Sans', sans-serif;
-  letter-spacing: 0.5px;
-  border: 1px solid rgba(62, 116, 245, 0.25);
+  color: #a3b3ff;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(138, 152, 234, 0.3);
+  border-radius: 30px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  transform-origin: center;
   
   &:hover {
-    background: rgba(62, 116, 245, 0.25);
-    border-color: rgba(62, 116, 245, 0.4);
-    color: #f3f4f6;
+    color: white;
+    border-color: transparent;
+    
+    ${SkillPillGlow} {
+      opacity: 1;
+    }
   }
 `;
+
+const SkillsMeter = styled.div`
+  margin-top: 3rem;
+`;
+
+const MeterLabel = styled.div`
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #f3f4f6;
+  margin-bottom: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+`;
+
+const MeterBar = styled.div`
+  height: 12px;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+`;
+
+const MeterFill = styled.div`
+  height: 100%;
+  width: ${props => props.width}%;
+  background: linear-gradient(90deg, #3e74f5, #7b68ee);
+  border-radius: 6px;
+  position: relative;
+  
+  &:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 30px;
+    background: rgba(255, 255, 255, 0.2);
+    filter: blur(3px);
+    animation: ${shine} 2s infinite;
+  }
+`;
+
+const MeterPercentage = styled.div`
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Mona Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+`;
+
+
+
+

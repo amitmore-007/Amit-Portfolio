@@ -7,13 +7,14 @@ import KUTE from 'kute.js';
 import profileImage from '../assets/images/profile.jpg';
 import fallbackImage from '../assets/images/profile.jpg';
 import resume from '../assets/pdf/resume.pdf';
+import ContactModal from './ContactModal'; // Import the contact modal componen
 
 
 const Main = () => {
   const blobRef = useRef(null);
   const matrixCanvasRef = useRef(null);
   const [cursorVisible, setCursorVisible] = useState(true);
-  
+  const [isModalOpen, setIsModalOpen] = useState(false); 
   useEffect(() => {
     // Animate the blob
     if (blobRef.current) {
@@ -88,6 +89,11 @@ const Main = () => {
     }
   }, []);
 
+  const handleSubmit = async (formData) => {
+    console.log('Form submitted:', formData);
+    // The actual submission logic is in the ContactModal component
+  };
+
   
 
   return (
@@ -138,6 +144,7 @@ const Main = () => {
             </CodeLine>
           ))}
         </CodeLines>
+        
         
         {/* <Blob ref={blobRef}>
           <svg viewBox="0 0 600 600" width="100%" height="100%" preserveAspectRatio="none">
@@ -265,7 +272,6 @@ const Main = () => {
                 </CommandLine>
               </TerminalBody>
             </ConsoleWrapper>
-            
             <ButtonContainer>
               <PrimaryButton 
                 href={resume}
@@ -276,12 +282,10 @@ const Main = () => {
               >
                 <ButtonText>npm install resume</ButtonText>
               </PrimaryButton>
+              {/* Modified the SecondaryButton to open the modal instead of scrolling */}
               <SecondaryButton 
-                to="contact" 
-                smooth={true} 
-                duration={500} 
-                offset={-70}
-                as={motion.a}
+                onClick={() => setIsModalOpen(true)} 
+                as={motion.button}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -339,25 +343,7 @@ const Main = () => {
     
     <GlowingCircle />
     
-    {/* Tech skill badges around the profile */}
-    {['React', 'Node.js', 'SQL', 'UI/UX', 'Java'].map((skill, index) => (
-      <TechBadge
-        key={skill}
-        style={{ zIndex: 10 }} // Add higher z-index to ensure badges appear above image
-        animate={{
-          x: Math.sin(index * Math.PI/3) * 150, // Increased orbit radius
-          y: Math.cos(index * Math.PI/3) * 150, // Increased orbit radius
-          rotate: index * 45,
-        }}
-        transition={{
-          repeat: Infinity,
-          repeatType: "reverse",
-          duration: 15 + index * 2,
-        }}
-      >
-        {skill}
-      </TechBadge>
-    ))}
+    
   </ProfileImageContainer>
 </ImageWrapper>
       </MainContent>
@@ -375,6 +361,12 @@ const Main = () => {
         </motion.div>
         <ScrollText>scroll.addEventListener('down', showMore);</ScrollText>
       </ScrollIndicator>
+      {/* Add the ContactModal component */}
+      <ContactModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSubmit={handleSubmit}
+      />
     </MainContainer>
   );
 }
@@ -736,7 +728,7 @@ const PrimaryButton = styled.a`
   }
 `;
 
-const SecondaryButton = styled.a`
+const SecondaryButton = styled.button`
   background: transparent;
   color: #fff;
   padding: 1rem 2rem;

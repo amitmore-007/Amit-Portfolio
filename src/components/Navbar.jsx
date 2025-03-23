@@ -172,24 +172,7 @@ const Navbar = () => {
             ))}
           </NavTrack>
           
-          <ContactButtonWrapper
-            as={motion.div}
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-          >
-            <ContactButton 
-              as={motion.button}
-              whileHover={{ 
-                scale: 1.05,
-                boxShadow: "0 0 25px rgba(125, 111, 255, 0.8)"
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <ButtonText>Contact Me</ButtonText>
-              <ButtonGlow />
-            </ContactButton>
-          </ContactButtonWrapper>
+         
         </MenuContainer>
         
         <MobileIcon 
@@ -449,7 +432,7 @@ const NavLink = styled(Link)`
   white-space: nowrap;
   transition: all 0.3s ease;
   position: relative;
-  
+  cursor:pointer;
   &:hover {
     color: white;
     text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);

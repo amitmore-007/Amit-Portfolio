@@ -103,7 +103,7 @@ export const navLinks = [
     },
     {
       id: 2,
-      title: "Restuarant Giftcard Management System",
+      title: "Restaurant Giftcard Management System",
       date: "Dec 2024 - Feb 2025",
       description:
         "The Gift Card Management System is a platform designed to facilitate the seamless purchase, storage, and redemption of gift cards. It enables users to securely buy, manage, and add gift cards to digital wallets like Google Wallet, while businesses can track transactions and buyer details efficiently. The system ensures secure payments, user-friendly management, and a smooth gifting experience.",

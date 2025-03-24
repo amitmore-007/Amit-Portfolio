@@ -503,6 +503,7 @@ const MainContent = styled.div`
   margin: 0 auto;
   display: flex;
   z-index: 10;
+  margin-top:120px;
   
   @media screen and (max-width: 992px) {
     flex-direction: column-reverse;
@@ -525,6 +526,7 @@ const ImageWrapper = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-top:-140px;
   
   @media screen and (max-width: 992px) {
     margin-bottom: 2rem;

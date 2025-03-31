@@ -25,7 +25,7 @@ const ContactModal = ({ isOpen, onClose, onSubmit }) => {
     setLoading(true);
     
     try {
-      const response = await fetch('http://localhost:5000/api/contact', {
+      const response = await fetch('https://portfolio-backend-rhvw.onrender.com/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

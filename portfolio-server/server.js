@@ -16,7 +16,12 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cors({
+  origin: "https://amit-more-portfolio.netlify.app/", // Allow only your frontend
+  methods: ["POST"],
+  allowedHeaders: ["Content-Type"]
+}));
+
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',

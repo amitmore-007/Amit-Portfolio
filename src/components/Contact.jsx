@@ -115,7 +115,7 @@ const ContactForm = ({
     try {
       // Connect to your custom backend API
       const response = await axios.post(
-        'http://localhost:5000/api/contact', // Your server URL (change in production)
+        'https://portfolio-backend-rhvw.onrender.com/api/contact', // Your server URL (change in production)
         formData
       );
       
